@@ -1,0 +1,25 @@
+name: auth-verification
+on:
+  push:
+    branches: [develop, qa, main, feat/auth-login-portal]
+  pull_request:
+    branches: [develop, qa, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run coverage
+      - run: npm run build
+      - run: npm run check:production-build
+      - run: docker compose -f deploy/compose.yml config --quiet

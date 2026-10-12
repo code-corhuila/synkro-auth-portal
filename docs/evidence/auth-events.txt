@@ -1,0 +1,11 @@
+12/Oct/2026:21:26:54 +0000 POST /api/v1/auth/login 401
+12/Oct/2026:21:27:37 +0000 POST /api/v1/auth/login 200
+12/Oct/2026:21:27:46 +0000 POST /api/v1/auth/refresh 200
+12/Oct/2026:21:28:04 +0000 POST /api/v1/auth/logout 200
+12/Oct/2026:21:42:40 +0000 POST /api/v1/auth/login 200
+12/Oct/2026:21:44:56 +0000 POST /api/v1/auth/refresh 200
+12/Oct/2026:21:45:26 +0000 POST /api/v1/auth/logout 200
+12/Oct/2026:21:45:42 +0000 POST /api/v1/auth/login 200
+12/Oct/2026:21:46:02 +0000 POST /api/v1/auth/refresh 200
+12/Oct/2026:21:47:36 +0000 POST /api/v1/auth/logout 200
+DB posterior al logout final: active=false, count=6; active=true, count=0. Consulta solo agregados, sin hashes ni credenciales.

@@ -1,0 +1,14 @@
+services:
+  auth-portal:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/remotes/auth/}
+        VITE_SHELL_ENTRY_URL: ${VITE_SHELL_ENTRY_URL:-http://localhost:5173/assets/remoteEntry.js}
+    networks:
+      platform:
+        aliases: [synkro-auth-portal]
+networks:
+  platform:
+    external: true

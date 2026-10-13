@@ -1,0 +1,8 @@
+GET /assets/remoteEntry.js 200
+GET /remotes/auth/assets/remoteEntry.js 200
+GET /remotes/auth/assets/preload-helper-BTsXwarG.js 200
+GET /remotes/auth/assets/style-D6m2Fa1g.css 200
+GET /remotes/auth/assets/__federation_expose_Login-BymHlSnI.js 200
+GET /remotes/auth/assets/jsx-runtime-P03bSsjX.js 200
+GET /remotes/auth/assets/_virtual___federation_fn_import-CeBD8VZv.js 200
+GET /remotes/auth/assets/rolldown-runtime-BvCyGRYZ.js 200

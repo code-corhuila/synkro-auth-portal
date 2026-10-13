@@ -2,8 +2,8 @@
 
 > auth bounded context: web UI (remote)
 
-Part of the **LMS Library** distributed system — team `lms-library`, Grupo 2.
-Governance and documentation live in [`library-docs`](https://github.com/code-corhuila/library-docs).
+Part of the **SynkroTech SAS Sales Management System** — organization `code-corhuila`.
+Governance and documentation live in [`synkro-docs`](https://github.com/code-corhuila/synkro-docs).
 
 ## Branching
 
@@ -22,4 +22,16 @@ branch into another: `merge develop -> qa` and `merge qa -> main` do not exist i
 `main` requires **1 approval from `ariel5253`**. On `develop` and `qa` the team sets its own review
 rule.
 
-Full policy: `00-governance/branching-policy.md` in `library-docs`.
+Full policy: `00-governance/branching-policy.md` in `synkro-docs`.
+
+## Login remote (HU-FE-08)
+
+React login form exposed as `authPortal/Login`, mounted by Host at public
+`/login`. Consumes only `shell/authentication`; the Host owns transport,
+credentials, session and navigation. No standalone production login client.
+
+Node 22: `npm ci`, `npm run lint`, `npm run coverage`, `npm run build`,
+`npm run check:production-build`. Configure `VITE_BASE_PATH` and
+`VITE_SHELL_ENTRY_URL` at build time. Compose serves internally on platform
+without published ports. See [implementation and delivery](docs/implementation.md)
+for contracts, configuration, validation and coordinated release order.

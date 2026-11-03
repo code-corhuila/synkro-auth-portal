@@ -11,7 +11,11 @@ export default defineConfig(({ mode }) => {
                     shared: { react: { import: false, requiredVersion: '^19.2.8' }, 'react-dom': { import: false, requiredVersion: '^19.2.8' } },
                 })])], build: { target: 'esnext', modulePreload: false, cssCodeSplit: false, minify: false },
         preview: { port: 5174, strictPort: true }, test: { environment: 'jsdom', globals: true, setupFiles: './src/test-setup.ts',
-            alias: { 'shell/authentication': fileURLToPath(new URL('./src/test-doubles/authentication.ts', import.meta.url)) },
+            alias: {
+                'shell/authentication': fileURLToPath(new URL('./src/test-doubles/authentication.ts', import.meta.url)),
+                'shell/apiClient': fileURLToPath(new URL('./src/test-doubles/apiClient.ts', import.meta.url)),
+                'shell/session': fileURLToPath(new URL('./src/test-doubles/session.ts', import.meta.url)),
+            },
             coverage: { provider: 'v8', include: ['src/**/*.{ts,tsx}'], exclude: ['src/**/*.test.*', 'src/test-doubles/**', 'src/test-setup.ts', 'src/**/*.d.ts'], reporter: ['text', 'lcov'], thresholds: { statements: 70 } },
         } };
 });

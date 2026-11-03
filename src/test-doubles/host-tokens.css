@@ -1,0 +1,135 @@
+/*
+ * Design tokens, Crimson Circuit (12-ux-ui/design-system.md).
+ *
+ * The host is the only place these custom properties are defined. Portals read
+ * them with var(--token-name) and never redefine them. The names are the
+ * contract: do not rename or add tokens here without a design-system change.
+ *
+ * The dark theme is selected by the operating system (prefers-color-scheme)
+ * and it overrides only names that the light theme defines.
+ */
+
+:root {
+  /* Base palette: navy and red from the reference gradient */
+  --color-primary-50: #FDECE4;
+  --color-primary-100: #F0D8CC;
+  --color-primary-300: #C65A3B;
+  --color-primary-500: #B51A28;
+  --color-primary-700: #931623;
+  --color-primary-900: #641A2E;
+
+  --color-neutral-50: #FFF9F6;
+  --color-neutral-900: #161E2F;
+
+  /* Semantic colors */
+  --color-success-50: #E7F7EF;
+  --color-success-500: #1F9D6D;
+  --color-success-700: #1A855D;
+
+  --color-warning-50: #FDF1E2;
+  --color-warning-500: #E08A1E;
+  --color-warning-700: #A86716;
+
+  --color-error-50: #FDE9EF;
+  --color-error-500: #E23A6E;
+  --color-error-700: #D73768;
+
+  --color-info-50: #FDECE4;
+  --color-info-700: #A86716;
+
+  /* Role alias: resolves differently per theme */
+  --color-secondary-action: var(--color-primary-900);
+
+  /* Text */
+  --color-text-primary: #161E2F;
+  --color-text-secondary: #7C645E;
+  --color-text-disabled: #D9C7BE;
+
+  /* Backgrounds */
+  --color-bg-page: #FFF9F6;
+  --color-bg-card: #FFFFFF;
+  --color-bg-overlay: rgba(22, 30, 47, 0.45);
+
+  /* Typography: identical in both themes */
+  --font-family-heading: 'Big Shoulders Display', sans-serif;
+  --font-family-sans: 'IBM Plex Sans', sans-serif;
+  --font-family-mono: 'JetBrains Mono', monospace;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.563rem;
+  --font-size-2xl: 1.953rem;
+  --font-size-3xl: 2.441rem;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-loose: 1.8;
+
+  /* Spacing: identical in both themes */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Borders and shadows, light theme */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 2px 6px rgba(181, 26, 40, 0.08);
+  --shadow-md: 0 6px 18px rgba(181, 26, 40, 0.14), 0 2px 5px rgba(22, 30, 47, 0.06);
+  --shadow-lg: 0 14px 32px rgba(181, 26, 40, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Surface: its own dark scale, not a tint of --color-primary */
+    --color-bg-page: #12141C;
+    --color-bg-card: #161E2F;
+    --color-bg-overlay: rgba(0, 0, 0, 0.55);
+
+    /* Primary: the same red and coral family, retuned for a dark surface */
+    --color-primary-300: #FFA586;
+    --color-primary-500: #A82C24;
+    --color-primary-700: #C4342B;
+
+    --color-secondary-action: var(--color-primary-300);
+
+    /* Semantic colors: saturated text over a translucent background */
+    --color-success-50: rgba(52, 211, 153, 0.16);
+    --color-success-700: #34D399;
+    --color-warning-50: rgba(251, 191, 36, 0.16);
+    --color-warning-700: #FBBF24;
+    --color-error-50: rgba(251, 113, 133, 0.16);
+    --color-error-700: #FB7185;
+    --color-info-50: rgba(251, 191, 36, 0.16);
+    --color-info-700: #FBBF24;
+
+    --color-text-primary: #F5EDE6;
+    --color-text-secondary: #B3A79C;
+    --color-text-disabled: #5C554E;
+
+    /* Borders and shadows, dark theme: an ambient black shadow separates a card from the canvas */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.30);
+    --shadow-md: 0 10px 22px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 20px 44px rgba(0, 0, 0, 0.40);
+  }
+}

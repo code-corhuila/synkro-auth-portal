@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { getUserById } from '../api/usersApi';
 import { classifyFailure, formErrorMessage, isApiFailure, type ApiFailure } from '../model/errors';
 import type { Role, UserProfile } from '../model/user';
@@ -21,7 +21,7 @@ type Status = 'idle' | 'loading' | 'data' | 'empty' | 'error';
 // Known-ID lookup only (AUTH16-04) — never a browsable list. A request id
 // counter plus aborting the previous controller both guard against an older
 // search overwriting a newer one, even if the abort itself is not observed.
-export function UserLookup() {
+export function UserLookup({ selected }: { selected?: { id: string } } = {}) {
   const [id, setId] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -31,6 +31,7 @@ export function UserLookup() {
   const [retryable, setRetryable] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const requestId = useRef(0);
+  const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => () => {
     requestId.current += 1;
@@ -45,7 +46,7 @@ export function UserLookup() {
     setMessage(null);
   }
 
-  async function runSearch(targetId: string) {
+  const runSearch = useCallback(async (targetId: string) => {
     controller.current?.abort();
     const myController = new AbortController();
     controller.current = myController;
@@ -68,7 +69,16 @@ export function UserLookup() {
       setRetryable(kind === 'ambiguous');
       setStatus(kind === 'notFound' ? 'empty' : 'error');
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!selected) return;
+    setId(selected.id);
+    setValidationError(null);
+    setLastSearched(selected.id);
+    heading.current?.focus();
+    void runSearch(selected.id);
+  }, [runSearch, selected]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,7 +95,7 @@ export function UserLookup() {
 
   return (
     <section className="user-lookup" aria-labelledby="user-lookup-title">
-      <h2 id="user-lookup-title">Consultar usuario por ID</h2>
+      <h2 id="user-lookup-title" ref={heading} tabIndex={-1}>Consultar usuario por ID</h2>
       <form onSubmit={handleSubmit}>
         <label htmlFor="user-lookup-id">ID de usuario</label>
         <input

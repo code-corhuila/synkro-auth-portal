@@ -4,14 +4,37 @@ import { apiClient } from './test-doubles/apiClient';
 import { resetSessionDouble, setTestSession } from './test-doubles/session';
 import App from './App';
 import { resetRegistrationIntentForTests } from './auth/intent/registrationIntent';
+import { resetServiceTokenIntentForTests } from './auth/intent/serviceTokenIntent';
 
 beforeEach(() => {
   apiClient.request.mockReset();
   resetSessionDouble();
   resetRegistrationIntentForTests();
+  resetServiceTokenIntentForTests();
   window.history.pushState({}, '', '/users');
 });
 afterEach(cleanup);
+
+describe('service credential session boundaries', () => {
+  it.each([null, { sub: 'alice', role: 'INVENTORY', sessionId: 's-1' },
+    { sub: 'alice', role: 'ADMIN', sessionId: 's-2' },
+    { sub: 'bob', role: 'ADMIN', sessionId: 's-1' }])('removes a received credential when identity changes (%j)', async (next) => {
+    window.history.pushState({}, '', '/service-tokens');
+    setTestSession({ sub: 'alice', role: 'ADMIN', sessionId: 's-1' });
+    apiClient.request.mockResolvedValue({
+      tokenId: 'test-id', service: 'synkro-worker', permissions: ['products:read'],
+      issuedBy: 'alice', issuedAt: '2026-11-07T00:00:00Z', expiresAt: '2026-12-07T00:00:00Z', token: 'fixture-secret',
+    });
+    render(<App />);
+    fireEvent.change(screen.getByLabelText('Servicio'), { target: { value: 'synkro-worker' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Emitir token' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y emitir' }));
+    await screen.findByLabelText('Token');
+    act(() => setTestSession(next));
+    expect(screen.queryByLabelText('Token')).not.toBeInTheDocument();
+    expect(apiClient.request).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('ADMIN gate inside the remote itself (defense in depth)', () => {
   it('mounts nothing and issues no request for a non-ADMIN session', () => {
@@ -38,13 +61,32 @@ describe('ADMIN gate inside the remote itself (defense in depth)', () => {
     expect(screen.getByLabelText('ID de usuario')).toBeInTheDocument();
   });
 
-  it('keeps /service-tokens unavailable even for ADMIN', () => {
+  it('routes an ADMIN session to the service-tokens page at /service-tokens without any I/O', () => {
     window.history.pushState({}, '', '/service-tokens');
     setTestSession({ sub: 'alice', role: 'ADMIN', sessionId: 's-1' });
     render(<App />);
 
-    expect(screen.getByText('Esta función aún no está disponible.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Emitir token de servicio' })).toBeInTheDocument();
     expect(screen.queryByText('Crear usuario')).not.toBeInTheDocument();
+    expect(apiClient.request).not.toHaveBeenCalled();
+  });
+
+  it('mounts nothing and issues no request for a non-ADMIN session at /service-tokens', () => {
+    window.history.pushState({}, '', '/service-tokens');
+    setTestSession({ sub: 'vera', role: 'SALESPERSON', sessionId: 's-1' });
+    render(<App />);
+
+    expect(screen.queryByText('Emitir token de servicio')).not.toBeInTheDocument();
+    expect(apiClient.request).not.toHaveBeenCalled();
+  });
+
+  it('mounts nothing at /service-tokens when there is no session at all', () => {
+    window.history.pushState({}, '', '/service-tokens');
+    setTestSession(null);
+    render(<App />);
+
+    expect(screen.queryByText('Emitir token de servicio')).not.toBeInTheDocument();
+    expect(apiClient.request).not.toHaveBeenCalled();
   });
 
   it('retires an in-flight creation and shows no stale profile when the role is denied mid-flight', () => {

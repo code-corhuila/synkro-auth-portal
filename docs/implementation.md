@@ -151,6 +151,23 @@ La aceptación con servicios reales se registra aparte para la composición
 exacta elegida. Las pruebas unitarias no sustituyen esa aceptación ni la
 aprobación humana de la HU.
 
+Resultado revisado: **115 pruebas unitarias aprobadas**, cobertura de
+sentencias **91,75 %** (base anterior: 90,66 %). La aceptación suplementaria
+real aprobó **44 comprobaciones**: las 32 anteriores y 12 específicas de
+AUTH-17, con el portal en `b83378ed15e11cc03d404bec0cfe835c89484f95` sobre
+la selección de Infra QA `3a33af9c2775086dbbb490c9700219af52831235`.
+Incluye ambas emisiones, copia/revelación explícitas, metadatos sin secreto,
+permisos efectivos, rechazo de expirados, 401/403, conflicto 422, respuesta
+POST perdida después de confirmar la emisión y replay con la misma clave,
+navegación, ambos temas, teclado, ancho de 390px y logout real.
+
+La suite suplementaria terminó con código 0 y limpieza/exportación aprobadas.
+El proceso exterior terminó con código 2, esperado para el alcance de revisión
+disponible: no representa una aceptación completa nueva de las 21 suites.
+Se verificaron las revisiones de las 18 fuentes, el lock y los nombres exactos
+de las 44 comprobaciones. Continúan pendientes la revisión humana y la
+trazabilidad central; esta evidencia no cierra automáticamente la HU.
+
 ## Archivos nuevos/modificados en esta HU
 
 - `src/App.tsx`, `src/App.test.tsx` — enrutamiento a `/service-tokens`.

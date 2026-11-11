@@ -398,7 +398,7 @@ describe('a definite answer', () => {
     expect(apiClient.request.mock.calls[1][1].body.newPassword).toBe('Corrected-pass-77');
   });
 
-  it('on a 422 about the key during a retry, says the attempt cannot be resent, ends it and clears the secret', async () => {
+  it('on a 422 about the key during a retry (a different request, or a receipt that expired), says the attempt cannot be resent, ends it and clears the secret', async () => {
     apiClient.request.mockRejectedValueOnce(timeout())
       .mockRejectedValueOnce(failure(422, 'BUSINESS_RULE_VIOLATION', [{ field: 'Idempotency-Key', message: 'used with a different request' }]));
     renderPanel();
@@ -408,11 +408,77 @@ describe('a definite answer', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar con la misma solicitud' }));
 
-    expect(await screen.findByText('Este intento ya no se puede reenviar. Descártalo y, si hace falta, inicia un restablecimiento nuevo.')).toBeInTheDocument();
+    expect(await screen.findByText('No se pudo reenviar este intento: ya no se reconoce como la solicitud original (pasó el tiempo de reenvío o la clave se usó con otra solicitud). Esta vez no se repitió ningún cambio, pero el restablecimiento original puede haberse aplicado.')).toBeInTheDocument();
     expect(currentIntent(owner)).toBeNull();
     expect(apiClient.request).toHaveBeenCalledTimes(2);
     expect(document.body.innerHTML).not.toContain(PASSWORD);
     expect(screen.queryByRole('button', { name: 'Reintentar con la misma solicitud' })).not.toBeInTheDocument();
+  });
+
+  // ADR-021 Decision 2: after the receipt expires the same request is a 422 on the key. The server executed nothing, and
+  // it does not say the first reset did not happen, so neither may the Portal.
+  describe('a 422 about the key because the receipt expired', () => {
+    async function reachTheKeyConflict() {
+      apiClient.request.mockRejectedValueOnce(timeout())
+        .mockRejectedValueOnce(failure(422, 'BUSINESS_RULE_VIOLATION', [{ field: 'Idempotency-Key', message: 'used with a different request' }]));
+      renderPanel();
+      goToConfirmation();
+      confirm();
+      await screen.findByText('No se pudo confirmar el resultado.');
+      fireEvent.click(screen.getByRole('button', { name: 'Reintentar con la misma solicitud' }));
+      await screen.findByText(/ya no se reconoce como la solicitud original/);
+    }
+
+    it('does not generate another key by itself and sends nothing more', async () => {
+      await reachTheKeyConflict();
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      });
+
+      expect(apiClient.request).toHaveBeenCalledTimes(2);
+      expect(currentIntent(owner)).toBeNull();
+    });
+
+    it('does not claim that the earlier reset never happened, and says nothing was repeated', async () => {
+      await reachTheKeyConflict();
+
+      const text = screen.getByRole('region', { name: 'Restablecer contraseña' }).textContent ?? '';
+      expect(text).toContain('puede haberse aplicado');
+      expect(text).toContain('no se repitió ningún cambio');
+      expect(text).not.toMatch(/no se aplicó|nunca se aplicó|no se realizó|no ocurrió|fall[oó]/i);
+    });
+
+    it('lets the person abandon the attempt and start another operation only by typing, continuing and confirming again, with a new key', async () => {
+      await reachTheKeyConflict();
+      const firstKey = apiClient.request.mock.calls[0][1].idempotencyKey;
+
+      fireEvent.click(screen.getByRole('button', { name: 'Iniciar un restablecimiento nuevo' }));
+
+      expect(screen.getByLabelText('Nueva contraseña')).toHaveValue('');
+      expect(screen.getByLabelText('Confirmar contraseña')).toHaveValue('');
+      expect(apiClient.request).toHaveBeenCalledTimes(2);
+      apiClient.request.mockResolvedValueOnce(answer);
+      typePasswords('Another-new-pass-55');
+      fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+      expect(apiClient.request).toHaveBeenCalledTimes(2);
+      confirm();
+
+      await screen.findByText('Contraseña restablecida.');
+      expect(apiClient.request).toHaveBeenCalledTimes(3);
+      expect(apiClient.request.mock.calls[2][1].idempotencyKey).not.toBe(firstKey);
+      expect(apiClient.request.mock.calls[2][1].body.newPassword).toBe('Another-new-pass-55');
+    });
+
+    it('keeps the attempt closed for any other ending: no new-operation shortcut after a 422 about the user', async () => {
+      apiClient.request.mockRejectedValue(failure(422, 'BUSINESS_RULE_VIOLATION', [{ field: 'id', message: 'inactive' }]));
+      renderPanel();
+      goToConfirmation();
+      confirm();
+      await screen.findByText('Este usuario ya no admite el restablecimiento: es administrador o está inactivo.');
+
+      expect(screen.queryByRole('button', { name: 'Iniciar un restablecimiento nuevo' })).not.toBeInTheDocument();
+    });
   });
 });
 

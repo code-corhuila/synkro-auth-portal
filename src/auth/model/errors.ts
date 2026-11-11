@@ -52,8 +52,10 @@ const FIELD_MESSAGES: Record<string, Record<string, string>> = {
   BUSINESS_RULE_VIOLATION: {
     email: 'Ya existe un usuario registrado con este correo.',
     id: 'Este usuario ya no admite el restablecimiento: es administrador o está inactivo.',
-    // A key already answered for another request. It does not say the earlier attempt failed: it was recorded.
-    'Idempotency-Key': 'Este intento ya no se puede reenviar. Descártalo y, si hace falta, inicia un restablecimiento nuevo.',
+    // The key is already recorded (ADR-021 Decision 2): the request is no longer recognized, either because it differs
+    // from the one that used the key or because the 24-hour window of its private receipt has ended. The server executed
+    // nothing this time and does not say the first reset did not happen, so this copy must not say it either.
+    'Idempotency-Key': 'No se pudo reenviar este intento: ya no se reconoce como la solicitud original (pasó el tiempo de reenvío o la clave se usó con otra solicitud). Esta vez no se repitió ningún cambio, pero el restablecimiento original puede haberse aplicado.',
   },
 };
 

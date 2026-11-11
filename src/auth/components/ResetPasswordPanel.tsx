@@ -79,6 +79,8 @@ export function ResetPasswordPanel({ owner, target, onClose, onResolved }: {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<PasswordResetResult | null>(null);
+  // The key is already recorded but this request is no longer recognized (a different request, or an expired receipt).
+  const [keyConflict, setKeyConflict] = useState(false);
   const flight = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const title = useRef<HTMLHeadingElement>(null);
@@ -144,7 +146,10 @@ export function ResetPasswordPanel({ owner, target, onClose, onResolved }: {
           setPhase('form');
           return;
         }
+        const conflict = errors.id === undefined && errors['Idempotency-Key'] !== undefined;
         conclude('ended', errors.id ?? errors['Idempotency-Key'] ?? formErrorMessage(failure));
+        // Nothing is resent and no new key is made here: a new operation is offered, never started by itself.
+        setKeyConflict(conflict);
         return;
       }
       conclude('ended', formErrorMessage(failure));
@@ -178,6 +183,16 @@ export function ResetPasswordPanel({ owner, target, onClose, onResolved }: {
       return;
     }
     await send(intent);
+  }
+
+  // Abandons the attempt that can no longer be recognized. It only reopens the form: a new operation needs the password
+  // typed again, the confirmation step, and a new key made at that moment.
+  function startNewOperation() {
+    setKeyConflict(false);
+    setMessage(null);
+    setFieldErrors({});
+    setFields(EMPTY_FIELDS);
+    setPhase('form');
   }
 
   function handleDiscard() {
@@ -304,8 +319,17 @@ export function ResetPasswordPanel({ owner, target, onClose, onResolved }: {
           <h3 ref={step} tabIndex={-1}>Operación terminada</h3>
           <Recipient target={shownTarget} />
           {message && <p role="alert" className="reset-password__error">{message}</p>}
+          {keyConflict && (
+            <p>
+              Si necesitas cambiar la contraseña, puedes abandonar este intento e iniciar otro restablecimiento: tendrás que
+              escribir la contraseña de nuevo y confirmarlo, y se enviará como una operación nueva.
+            </p>
+          )}
           <div className="reset-password__actions">
             <button type="button" onClick={onClose}>Cerrar</button>
+            {keyConflict && (
+              <button type="button" className="reset-password__secondary" onClick={startNewOperation}>Iniciar un restablecimiento nuevo</button>
+            )}
           </div>
         </div>
       )}

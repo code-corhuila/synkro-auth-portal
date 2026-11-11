@@ -82,7 +82,9 @@ describe('password reset copy', () => {
   it('explains a 422 on the idempotency key as an attempt that cannot be resent, without saying it failed', () => {
     const errors = fieldErrorsFrom(failure(422, 'BUSINESS_RULE_VIOLATION', [{ field: 'Idempotency-Key', message: 'already used with a different request' }]));
 
-    expect(errors['Idempotency-Key']).toBe('Este intento ya no se puede reenviar. Descártalo y, si hace falta, inicia un restablecimiento nuevo.');
+    expect(errors['Idempotency-Key']).toBe(
+      'No se pudo reenviar este intento: ya no se reconoce como la solicitud original (pasó el tiempo de reenvío o la clave se usó con otra solicitud). Esta vez no se repitió ningún cambio, pero el restablecimiento original puede haberse aplicado.',
+    );
     expect(errors['Idempotency-Key']).not.toMatch(/falló|no se aplicó/i);
   });
 

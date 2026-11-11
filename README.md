@@ -2,12 +2,12 @@
 
 > auth bounded context: web UI (remote)
 
-Part of the **SynkroTech SAS Sales Management System** — organization `code-corhuila`.
+Part of the **SynkroTech SAS Sales Management System** â€” organization `code-corhuila`.
 Governance and documentation live in [`synkro-docs`](https://github.com/code-corhuila/synkro-docs).
 
 ## Branching
 
-Three permanent branches. **None of them accepts a direct commit** — you enter through a child
+Three permanent branches. **None of them accepts a direct commit** â€” you enter through a child
 branch and leave through a Pull Request.
 
 ```
@@ -33,9 +33,9 @@ Inside the authenticated Users page an ADMIN can reset the password of an
 - Contract: `POST /api/v1/auth/users/{id}/password-reset` through the Host's
   client, body `{newPassword, confirmPassword}`, `Idempotency-Key` as a client
   option (never a URL, never a hand-written header). ADR-021 (accepted).
-- Flow: form (two password fields, show/hide) → explicit confirmation that
-  repeats the recipient and states the effects → pending (controls disabled,
-  single flight) → success. The Portal never claims the password was changed
+- Flow: form (two password fields, show/hide) â†’ explicit confirmation that
+  repeats the recipient and states the effects â†’ pending (controls disabled,
+  single flight) â†’ success. The Portal never claims the password was changed
   until the API answered 200.
 - An outcome that cannot be confirmed (timeout, lost response, network, 5xx or
   an unreadable answer) shows "No se pudo confirmar el resultado." and offers a
@@ -65,3 +65,14 @@ Node 22: `npm ci`, `npm run lint`, `npm run coverage`, `npm run build`,
 `VITE_SHELL_ENTRY_URL` at build time. Compose serves internally on platform
 without published ports. See [implementation and delivery](docs/implementation.md)
 for contracts, configuration, validation and coordinated release order.
+## AUTH-19 review checks
+
+`npm run test:contract` generates five Pact interactions from the actual reset client. They cover success, replay
+after a later reset, an expired receipt, a purged receipt and a forbidden caller. Their examples are redacted string
+matchers; credentials are transient and never published in the artifact. Auth API verifies the pinned artifact with
+real API/owning migrations/PostgreSQL plus a deliberately incompatible provider. Regenerate and commit the artifact
+when the client contract changes; CI rejects stale artifacts. The normal unit collector remains restricted to src.
+
+The portal CI also runs lint, build, unit coverage, the production boundary check and the versioned Dockerfile build.
+Reset result transitions restore keyboard focus, including a second uncertain retry; closing restores a connected
+opener. This does not change the request or silently generate a new idempotency key.

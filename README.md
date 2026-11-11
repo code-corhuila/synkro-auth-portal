@@ -32,7 +32,7 @@ Inside the authenticated Users page an ADMIN can reset the password of an
 
 - Contract: `POST /api/v1/auth/users/{id}/password-reset` through the Host's
   client, body `{newPassword, confirmPassword}`, `Idempotency-Key` as a client
-  option (never a URL, never a hand-written header). ADR-021 (proposed).
+  option (never a URL, never a hand-written header). ADR-021 (accepted).
 - Flow: form (two password fields, show/hide) → explicit confirmation that
   repeats the recipient and states the effects → pending (controls disabled,
   single flight) → success. The Portal never claims the password was changed
@@ -42,6 +42,11 @@ Inside the authenticated Users page an ADMIN can reset the password of an
   manual retry with the **same key and the same request**, or discarding the
   attempt. Nothing is ever resent automatically and no login attempt is used to
   "check".
+- A 422 on the key (the 24-hour receipt expired, or the key was used with another
+  request) says the attempt can no longer be resent, that nothing was repeated and that the
+  original reset may have been applied. It never claims it did not happen, never resends or
+  makes a key by itself, and offers "Iniciar un restablecimiento nuevo", which needs the
+  password typed and confirmed again and uses a new key.
 - The intent (key, recipient, password) lives in RAM only, bound to the Host
   subject and `sessionId`. It is dropped on logout, on a new session, on a
   definite answer, on success and on discard; a page reload loses it and the

@@ -3,9 +3,9 @@
 Un ADMIN restablece la contraseña de otro usuario desde la administración de **Usuarios**, ya autenticado. No existe
 recuperación pública: la pantalla de login no cambia (hay una prueba de regresión que lo exige).
 
-Referencias: HU `code-corhuila/synkro-docs#306`, HU-ARQ `#309`, ADR-021 (**Proposed**, PR `synkro-docs#310`; no está
-aceptado y su aprobación sigue siendo requisito para publicar en `main`). Dependencias de integración: `synkro-auth-db`
-(V018–V021, PR #27) → `synkro-auth-api` → este Portal.
+Referencias: HU `code-corhuila/synkro-docs#306`, HU-ARQ `#309`, ADR-021 (**Accepted**, revisión `a7004cf` en el PR
+`synkro-docs#310`; la aceptación es de la decisión, no de este código ni de su revisión). Dependencias de integración:
+`synkro-auth-db` (V018–V026, PR #27) → `synkro-auth-api` (PR #44) → este Portal.
 
 ## Alcance
 
@@ -34,6 +34,13 @@ aceptado y su aprobación sigue siendo requisito para publicar en `main`). Depen
    para «comprobar».
 6. **Respuestas definitivas**: 400 sobre la contraseña vuelve al formulario con el error en el campo (y clave nueva al
    reenviar); 401/403/404/422 terminan el intento y limpian el secreto.
+7. **422 sobre `Idempotency-Key`** (ADR-021 Decisión 2): la API conserva un recibo privado 24 horas. Pasado ese tiempo
+   (o si la limpieza lo retiró), o si la clave se usó con otra solicitud, el mismo reintento recibe 422 y la API no
+   ejecuta nada. El Portal dice que el intento ya no se reconoce como la solicitud original, que esta vez no se repitió
+   ningún cambio y que **el restablecimiento original puede haberse aplicado** (nunca afirma que no ocurrió). No reenvía
+   ni genera otra clave por sí solo. Ofrece «Cerrar» o **«Iniciar un restablecimiento nuevo»**: abandona el intento y
+   reabre el formulario vacío; una operación nueva exige escribir la contraseña de nuevo, pasar por la confirmación y se
+   envía con una clave nueva.
 
 Un intento sin resolver se muestra al volver a Usuarios dentro de la misma sesión y **bloquea elegir a otra persona**
 hasta reenviarlo o descartarlo (aviso visible mientras dure).
@@ -48,64 +55,75 @@ nuevo restablecimiento exige una confirmación nueva y una clave nueva.
 
 ## Verificación automatizada
 
-`npm test` (200 pruebas, 21 archivos), `npm run build`, `npm run lint`, `npm run check:production-build` y
+`npm test` (204 pruebas, 21 archivos), `npm run build`, `npm run lint`, `npm run check:production-build` y
 `npm run coverage` (93 % de sentencias) pasan. Las pruebas nuevas se escribieron en rojo primero: API
 (`usersApi.test.ts`), política (`passwordPolicy.test.ts`), intención (`passwordResetIntent.test.ts`), copy
 (`errors.test.ts`), panel (`ResetPasswordPanel.test.tsx`), puntos de entrada (`UserDirectory.test.tsx`,
 `UserLookup.test.tsx`), página (`UsersPage.test.tsx`) y la regresión de login (`Login.test.tsx`). Las pruebas con el
 cliente y la sesión del Host usan los dobles de `src/test-doubles`; **no se presentan como aceptación real**.
 
-## Aceptación real (2026-11-10)
+## Aceptación real (2026-11-11)
 
-Composición propia y desechable, en una red Docker propia (`auth19-net`); no se tocó ningún recurso `synkro-dev-*` ni la
-base compartida, no se usó la CLI de operaciones de Infra (su candado `~/.synkro-operations` estaba vacío y no se
-adquirió) y las ejecuciones fueron secuenciales.
+Composición propia y desechable en una red Docker propia (`auth19-net`); no se tocó ningún recurso `synkro-dev-*` ni la
+base compartida. El candado `~/.synkro-operations` estaba vacío y no se adquirió (no se usó la CLI de operaciones de
+Infra). Las ejecuciones fueron secuenciales. **Los artefactos propios se construyeron con los Dockerfiles versionados**,
+desde `git archive` del commit (no desde `dist` ni JAR locales).
 
 | Pieza | Origen |
 | --- | --- |
-| PostgreSQL 16.6 (`postgres:16.6-alpine`), base `synkro_auth_acc` | contenedor propio; Flyway 11.20.3 aplicó las 21 migraciones de `synkro-auth-db` @ `5d831a6` |
-| Auth API | JAR construido de `synkro-auth-api` (rama `feat/admin-password-reset`, mismo árbol que se confirma) sobre `eclipse-temurin:21-jre-alpine`, usuario `auth_app`, clave RS256 desechable |
-| Gateway | imagen entregada `synkro-dev-synkro-api-gateway:latest`, sin cambios |
-| Host | imagen entregada `synkro-dev-host:latest`, sin cambios (entradas relativas, proxy `/api/`) |
-| Auth Portal | `dist` de esta rama (`VITE_BASE_PATH=/remotes/auth/`, shell en el origen del Host de prueba) servido por `nginx:1.27-alpine` con `deploy/nginx.conf` |
-| Inyector de fallos | proxy Node mínimo entre Gateway y Auth API, de un solo uso por petición `POST …/password-reset`: `drop-before` (no llega a la API) y `drop-after` (la API confirma y la respuesta se pierde). Registra método, ruta, clave y estado; nunca cuerpos ni credenciales |
+| PostgreSQL 16.6 (`postgres:16.6-alpine`), base `synkro_auth_acc` | contenedor propio; Flyway 11.20.3 aplicó 26 migraciones de `synkro-auth-db` @ `8b9b2c4` (V022–V026: recibo, permisos, función de limpieza) |
+| Auth API | imagen `auth19-final/auth-api:8b81276` (`sha256:782d876f…`), `docker build -f deploy/Dockerfile` del commit `8b81276` de `synkro-auth-api`, rol `auth_app`, clave RS256 desechable |
+| Gateway | imagen entregada `synkro-dev-synkro-api-gateway:latest` (`sha256:f41b60d9…`), sin reconstruir |
+| Host | imagen entregada `synkro-dev-host:latest` (`sha256:192e460c…`), sin reconstruir |
+| Auth Portal | imagen `auth19-final/auth-portal:fb2f88e` (`sha256:18e3fb1f…`), `docker build -f deploy/Dockerfile` del commit `fb2f88e` con `VITE_SHELL_ENTRY_URL` del Host de prueba; el build ejecutó `check:production-build` |
+| Inyector de fallos | proxy Node de un solo uso por petición `POST …/password-reset` entre Gateway y Auth API: `drop-before` y `drop-after`. Registra método, ruta, clave y estado; nunca cuerpos ni credenciales |
+| Acceso directo a la API | reenvío TCP a la imagen de Auth API para los logins de verificación, porque el Gateway limita el login a 1/min (ráfaga 5); reset, registro, refresh y todo el navegador pasan por el Gateway |
 
-ADMIN inicial creado con la CLI auditada (`InitialAdminCli`); cuatro usuarios no ADMIN, un ADMIN adicional y un usuario
-inactivo, todos **sintéticos y desechables** (`acc-*@example.test`), creados por la UI (uno) y por la API (el resto). No se
-restableció ninguna cuenta existente.
+ADMIN inicial con la CLI auditada (`InitialAdminCli`, de la imagen); el resto de cuentas (un ADMIN adicional, cinco usuarios de
+la UI y cinco de los guiones) son **sintéticas y desechables** (`acc-*@example.test`). No se restableció ninguna cuenta
+existente.
 
-Navegador real (panel integrado de la app de escritorio), Host en `http://localhost:15173`:
+**Por la API (Gateway real y Auth API de la imagen): 53 comprobaciones, 0 fallos.**
+
+| Bloque | Resultado |
+| --- | --- |
+| A. K1 fija A, K2 fija B | K1+A responde 200 con el mismo `passwordResetAt` original; A no se restaura (login con A: 401); B sigue vigente; la sesión abierta tras B no se revoca; K1+B y K1 con otro destino: 422 sobre `Idempotency-Key`; 2 auditorías y 2 recibos; `expires_at` ≈ 24 h |
+| B. Recibo vencido | K3+C tras vencer: 422 sobre la clave; no se re-ejecuta (C sigue vigente, 1 auditoría); otra contraseña con K3: 422; una clave nueva es una operación nueva |
+| C. Limpieza | `purge_expired_password_reset_receipts` borra solo el recibo vencido; la auditoría y la clave consumida permanecen (la clave sigue dando 422); el recibo vigente permanece y se repite con 200 |
+| D1. Login primero | el login verificó la contraseña y quedó en la cola del bloqueo, el reset se encola después: el login guarda 1 refresh y el reset lo revoca; ese refresh ya no rota; login con la nueva contraseña: 200 |
+| D2. Reset primero | el reset ocupa la cola, el login verificó la contraseña vieja y espera detrás: 401 genérico, sin tokens, sin fila de refresh nueva; la contraseña nueva entra y la vieja no |
+
+El orden de D1 y D2 lo fija la cola del bloqueo consultativo por usuario, observada en `pg_locks` (un bloqueo mantenido
+por una sesión de prueba y esperas contadas por la base), sin esperas por tiempo.
+
+**En navegador real (panel integrado), Host en `http://localhost:15173`, por el Gateway:**
 
 | # | Comprobación | Resultado |
 | --- | --- | --- |
-| A | Login público | un solo botón, sin enlaces ni texto de recuperación; sin claves de almacenamiento |
-| B | Directorio con 7 usuarios | 4 botones de restablecer (solo activos no ADMIN); ninguno para los 2 ADMIN ni el inactivo |
-| C | Contraseñas distintas | bloqueado en el cliente, 0 peticiones; error accesible en «Confirmar contraseña» |
-| D | Flujo feliz (usuario 1) | formulario → confirmación → `Restableciendo…` → `POST` 200; fila de auditoría `SUCCESS` (actor, destino, correlación, sin contraseña); su refresh quedó `active=false`; la contraseña anterior responde 401 y la nueva 200; el token de acceso previo sigue válido (403 por no ser ADMIN) hasta expirar; el refresh previo responde 401 |
-| E | Respuesta perdida **tras** el commit (usuario 2) | el navegador recibe 503, la BD ya tenía la fila `SUCCESS`; el Portal dice «No se pudo confirmar el resultado.»; el reintento manual reenvía la misma clave (dos entradas con la misma clave en el proxy), responde 200 con el **mismo** `passwordResetAt`; **una** fila de auditoría para la clave |
-| F | Fallo **antes** del commit (usuario 3) | la petición no llega a la API (0 filas, contraseña original sigue válida); el reintento con la misma clave la aplica una vez y revoca la sesión abierta entretanto |
-| G | Descartar (usuario 4) | texto de descarte, sin campos ni contraseña en DOM/almacenamiento; la verdad del backend era «aplicado» (la contraseña antigua ya no entra), por eso el Portal no afirma lo contrario; el aviso de bloqueo desaparece al descartar |
-| H | Recarga con intento sin resolver | sin panel, sin reintento, sin rastro en almacenamiento (límite declarado) |
-| I | Elegir a otra persona con un intento sin resolver | el panel conserva al primer destinatario y muestra el aviso |
-| J | 375 px de ancho | el panel no desborda y no hay scroll horizontal |
+| 1 | Flujo feliz (usuario 1) | formulario → confirmación → `POST` 200; 1 auditoría `SUCCESS`, 1 recibo, refresh del destinatario `active=false`; contraseña vieja 401, nueva 200 |
+| 2 | Respuesta perdida tras el commit (usuario 2) | «No se pudo confirmar el resultado.»; el reintento manual reenvía la misma clave y responde 200 (repetición por recibo); sigue habiendo **una** auditoría; la contraseña nueva entra |
+| 3 | Recibo vencido tras un resultado incierto (usuario 3) | el recibo se venció por SQL de administrador; el reintento recibe 422 sobre la clave. El panel muestra el texto de la Decisión 2: no se reconoce como la solicitud original, no se repitió ningún cambio, el original puede haberse aplicado. El proxy registró **una** petición más y ninguna automática; la contraseña del primer intento seguía vigente |
+| 4 | Nueva operación tras el 422 | «Iniciar un restablecimiento nuevo» reabre el formulario con campos vacíos; hasta confirmar no hay petición; se envía con una clave distinta, 200, y esa contraseña queda vigente (la del primer intento ya no) |
+| 5 | Fallo antes del commit (usuario 4) | la petición no llega a la API (0 auditorías; la contraseña original sigue válida); panel de resultado incierto |
+| 6 | Cierre de sesión con el intento sin resolver | `/auth/logout` 200; tras salir no hay panel, ni contraseñas en el DOM, y el almacenamiento queda vacío |
+| 7 | Recuperación | tras iniciar sesión de nuevo el Portal no retoma el intento (sin panel ni aviso de bloqueo); un restablecimiento nuevo del mismo usuario con clave nueva responde 200 y la contraseña nueva entra; la clave del intento perdido no se reutilizó |
+| 8 | 375 px de ancho | sin desbordamiento horizontal |
 
-Comprobaciones de API por el Gateway real: reintento de la misma clave **tras** que el destinatario iniciara otra sesión
-→ 200 con el mismo instante y esa sesión **no** se revoca; misma clave con otra contraseña u otro destino → 422 sobre
-`Idempotency-Key`; actor no ADMIN → 403; sin token → 401; sin `Idempotency-Key`, confirmación distinta, contraseña corta e
-id mal formado → 400; el propio ADMIN, otro ADMIN e inactivo → 422; id desconocido → 404; cuatro peticiones paralelas con la
-misma clave → todas 200 y **una** sola fila de auditoría; otro ADMIN con la misma clave obtiene su propio registro (la
-clave está ligada al actor).
-
-Secretos: ningún log de Auth API, Gateway, Host, Portal ni proxy, ni el volcado de la tabla de auditoría, contiene una
-contraseña usada ni un hash bcrypt; el DOM, el almacenamiento y las URL tras éxito/descarte/recarga tampoco.
+Secretos: ningún log de Auth API, Gateway, Host, Portal ni proxy contiene una contraseña usada, un hash bcrypt ni un JWT; la
+auditoría no contiene hashes; el DOM y el almacenamiento tras salir no contienen contraseñas; ninguna URL las lleva. Las
+claves `synkro_refresh` y `synkro_session` de `sessionStorage` son de la sesión del propio Host (no del Portal) y no
+contienen contraseñas.
 
 ### Límites reales
 
-- El `dist` del Portal y el JAR de la API se construyeron en la estación (mismo lockfile y mismo árbol), no con
-  `docker build`; Host y Gateway son las imágenes ya entregadas, no se reconstruyeron.
-- El inyector de fallos es instrumentación de prueba: simula la pérdida de respuesta, no una caída real de red.
-- Un hallazgo (el aviso de bloqueo seguía visible tras descartar) se corrigió durante la aceptación con dos pruebas
-  nuevas; las ejecuciones D–F se hicieron antes de ese cambio y G–J después. Solo afecta al aviso.
-- El borrado del intento al cerrar sesión se verifica con el doble de `shell/session` en pruebas; en el navegador real se
-  verificó que tras recargar no queda rastro. No se hizo prueba manual solo con teclado ni con lector de pantalla.
+- Host y Gateway son las imágenes ya entregadas (`synkro-dev-*`), no se reconstruyeron con sus Dockerfiles; el Portal y
+  la Auth API sí se construyeron con los suyos. La imagen del Portal se construyó del commit `fb2f88e`; este archivo se
+  confirma después en un commit solo de documentación.
+- El inyector de fallos es instrumentación de prueba: simula la pérdida de respuesta, no una caída real de red. El
+  vencimiento del recibo se simuló moviendo `expires_at` con el rol administrador de la base desechable; no se esperaron
+  24 horas.
+- Los logins de verificación de los guiones fueron directos a la API porque el Gateway los limita; el login del navegador
+  sí pasó por el Gateway.
+- El orden login/reset se fijó con la cola del bloqueo; no se afirma haber reproducido una carrera espontánea.
+- No se hizo prueba manual solo con teclado ni con lector de pantalla.
 - Fuera de alcance de esta aceptación: Customers, Sales, Products, Workflow, Worker y Mongo.

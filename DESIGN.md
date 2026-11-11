@@ -104,7 +104,9 @@ corners, no fully round corners outside `--radius-full` (unused here).
   is in the air every control is disabled and a synchronous guard rejects a
   second submit. An outcome that cannot be confirmed says exactly
   "No se pudo confirmar el resultado." — it never claims failure — and offers
-  "Reintentar con la misma solicitud" or "Descartar intento". The entry
+  "Reintentar con la misma solicitud" or "Descartar intento". A 422 about the
+  key ends the attempt without claiming the reset did not happen and offers
+  "Iniciar un restablecimiento nuevo" (empty form, new confirmation, new key). The entry
   button exists only in the directory row and the profile of an active
   non-ADMIN user, and never on the public login screen.
 - **Known-ID lookup**: a single ID input + "Buscar", never a browsable list —

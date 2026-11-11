@@ -58,3 +58,36 @@ describe('formErrorMessage', () => {
     expect(formErrorMessage(failure(400, 'VALIDATION_ERROR'))).not.toMatch(/english message/);
   });
 });
+
+describe('password reset copy', () => {
+  it('maps each field the reset can reject to its own Spanish text, never the English backend message', () => {
+    const errors = fieldErrorsFrom(failure(400, 'VALIDATION_ERROR', [
+      { field: 'newPassword', message: 'The field newPassword must have at least 8 characters' },
+      { field: 'confirmPassword', message: 'The field confirmPassword must match newPassword' },
+      { field: 'id', message: 'The path parameter id must be a valid identifier' },
+    ]));
+
+    expect(errors.newPassword).toBe('La contraseña debe tener al menos 8 caracteres y no superar los 72 bytes (UTF-8).');
+    expect(errors.confirmPassword).toBe('Las contraseñas no coinciden.');
+    expect(errors.id).toBe('El identificador del usuario no es válido.');
+    for (const text of Object.values(errors)) expect(text).not.toMatch(/The field|path parameter/);
+  });
+
+  it('explains a 422 on the user as a user that can no longer be reset, not as a form field', () => {
+    const errors = fieldErrorsFrom(failure(422, 'BUSINESS_RULE_VIOLATION', [{ field: 'id', message: 'The password of an inactive user cannot be reset' }]));
+
+    expect(errors.id).toBe('Este usuario ya no admite el restablecimiento: es administrador o está inactivo.');
+  });
+
+  it('explains a 422 on the idempotency key as an attempt that cannot be resent, without saying it failed', () => {
+    const errors = fieldErrorsFrom(failure(422, 'BUSINESS_RULE_VIOLATION', [{ field: 'Idempotency-Key', message: 'already used with a different request' }]));
+
+    expect(errors['Idempotency-Key']).toBe('Este intento ya no se puede reenviar. Descártalo y, si hace falta, inicia un restablecimiento nuevo.');
+    expect(errors['Idempotency-Key']).not.toMatch(/falló|no se aplicó/i);
+  });
+
+  it('keeps the existing registration copy unchanged for the registration fields', () => {
+    expect(fieldErrorsFrom(failure(400, 'VALIDATION_ERROR', [{ field: 'password', message: 'x' }])).password)
+      .toBe('La contraseña debe tener al menos 8 caracteres.');
+  });
+});

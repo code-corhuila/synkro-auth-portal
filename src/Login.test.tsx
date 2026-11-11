@@ -39,3 +39,16 @@ it('abandonment clears the DOM password and aborts pending work without late sta
 it('never stores credentials or receives a token pair',async()=>{
  const spy=vi.spyOn(Storage.prototype,'setItem');authentication.login.mockResolvedValue({user:{sub:'a',role:'ADMIN'},destination:'/dashboard'});render(<Login/>);fill();fireEvent.click(screen.getByRole('button'));await waitFor(()=>expect(screen.getByLabelText('Contraseña')).toHaveValue(''));expect(spy).not.toHaveBeenCalled();spy.mockRestore();
 });
+it('offers no public password recovery or reset: the only control is the sign-in button (HU-AUTH-19)',async()=>{
+ authentication.login.mockRejectedValue({code:'INVALID_CREDENTIALS'});
+ render(<Login/>);
+ const forbidden=/olvid|recuper|restablec|reset|forgot/i;
+ expect(screen.queryAllByRole('link')).toHaveLength(0);
+ expect(screen.getAllByRole('button')).toHaveLength(1);
+ expect(document.body.textContent).not.toMatch(forbidden);
+ fill();fireEvent.click(screen.getByRole('button'));
+ await screen.findByRole('alert');
+ expect(screen.queryAllByRole('link')).toHaveLength(0);
+ expect(screen.getAllByRole('button')).toHaveLength(1);
+ expect(document.body.textContent).not.toMatch(forbidden);
+});

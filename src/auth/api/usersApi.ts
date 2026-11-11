@@ -1,5 +1,5 @@
 import { apiClient } from 'shell/apiClient';
-import type { CreateUserPayload, UserProfile } from '../model/user';
+import type { CreateUserPayload, PasswordResetRequest, PasswordResetResult, UserProfile } from '../model/user';
 import { ROLES } from '../model/user';
 
 function safeProfile(value: UserProfile): UserProfile {
@@ -21,6 +21,23 @@ export function registerUser(body: CreateUserPayload, idempotencyKey: string, si
 
 export function getUserById(id: string, signal?: AbortSignal): Promise<UserProfile> {
   return apiClient.request<UserProfile>(`/api/v1/auth/users/${encodeURIComponent(id)}`, { signal }).then(safeProfile);
+}
+
+function safeResetResult(value: PasswordResetResult): PasswordResetResult {
+  if (!value || typeof value.userId !== 'string' || typeof value.passwordResetAt !== 'string'
+    || Number.isNaN(Date.parse(value.passwordResetAt))) {
+    throw new Error('Invalid password reset response');
+  }
+  const { userId, passwordResetAt } = value;
+  return { userId, passwordResetAt };
+}
+
+// The new password travels only in the body, over the Host's client, never in the path, the query or a header the
+// caller writes. The key is a client option so the Host sends it as Idempotency-Key (ADR-021).
+export function resetUserPassword(id: string, body: PasswordResetRequest, idempotencyKey: string, signal?: AbortSignal): Promise<PasswordResetResult> {
+  return apiClient
+    .request<PasswordResetResult>(`/api/v1/auth/users/${encodeURIComponent(id)}/password-reset`, { method: 'POST', body, idempotencyKey, signal })
+    .then(safeResetResult);
 }
 
 export interface UserSearch {

@@ -44,9 +44,16 @@ const FIELD_MESSAGES: Record<string, Record<string, string>> = {
     email: 'Escribe un correo electrónico válido.',
     password: 'La contraseña debe tener al menos 8 caracteres.',
     role: 'Selecciona un rol válido.',
+    // The administrative password reset (ADR-021): same policy as the registration password, other field names.
+    newPassword: 'La contraseña debe tener al menos 8 caracteres y no superar los 72 bytes (UTF-8).',
+    confirmPassword: 'Las contraseñas no coinciden.',
+    id: 'El identificador del usuario no es válido.',
   },
   BUSINESS_RULE_VIOLATION: {
     email: 'Ya existe un usuario registrado con este correo.',
+    id: 'Este usuario ya no admite el restablecimiento: es administrador o está inactivo.',
+    // A key already answered for another request. It does not say the earlier attempt failed: it was recorded.
+    'Idempotency-Key': 'Este intento ya no se puede reenviar. Descártalo y, si hace falta, inicia un restablecimiento nuevo.',
   },
 };
 

@@ -24,6 +24,31 @@ rule.
 
 Full policy: `00-governance/branching-policy.md` in `synkro-docs`.
 
+## Users: password reset by an ADMIN (HU-AUTH-19)
+
+Inside the authenticated Users page an ADMIN can reset the password of an
+**active non-ADMIN** user from the directory row or the profile found by id
+(`ResetPasswordPanel`). There is no public recovery button on the login screen.
+
+- Contract: `POST /api/v1/auth/users/{id}/password-reset` through the Host's
+  client, body `{newPassword, confirmPassword}`, `Idempotency-Key` as a client
+  option (never a URL, never a hand-written header). ADR-021 (proposed).
+- Flow: form (two password fields, show/hide) → explicit confirmation that
+  repeats the recipient and states the effects → pending (controls disabled,
+  single flight) → success. The Portal never claims the password was changed
+  until the API answered 200.
+- An outcome that cannot be confirmed (timeout, lost response, network, 5xx or
+  an unreadable answer) shows "No se pudo confirmar el resultado." and offers a
+  manual retry with the **same key and the same request**, or discarding the
+  attempt. Nothing is ever resent automatically and no login attempt is used to
+  "check".
+- The intent (key, recipient, password) lives in RAM only, bound to the Host
+  subject and `sessionId`. It is dropped on logout, on a new session, on a
+  definite answer, on success and on discard; a page reload loses it and the
+  Portal says it can no longer confirm or resend that attempt.
+- Issued access tokens may stay valid until they expire (about one hour, ADR-017);
+  the target's renewable sessions end.
+
 ## Login remote (HU-FE-08)
 
 React login form exposed as `authPortal/Login`, mounted by Host at public

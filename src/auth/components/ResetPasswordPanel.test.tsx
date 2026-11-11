@@ -483,6 +483,34 @@ describe('a definite answer', () => {
 });
 
 describe('leaving while an attempt is unresolved', () => {
+  it('returns focus to the result after a second inconclusive retry', async () => {
+    apiClient.request.mockRejectedValue(timeout());
+    renderPanel();
+    goToConfirmation();
+    confirm();
+    await screen.findByRole('heading', { name: 'Resultado sin confirmar' });
+    const retry = screen.getByRole('button', { name: 'Reintentar con la misma solicitud' });
+    retry.focus();
+    fireEvent.click(retry);
+    await waitFor(() => expect(apiClient.request).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Resultado sin confirmar' })).toHaveFocus());
+  });
+
+  it('returns focus to the connected opener when the panel unmounts', () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open password reset';
+    document.body.append(opener);
+    try {
+      opener.focus();
+      const view = render(<ResetPasswordPanel owner={owner} target={target} onClose={vi.fn()} />);
+      expect(screen.getByRole('heading', { name: 'Restablecer contraseña' })).toHaveFocus();
+      view.unmount();
+      expect(opener).toHaveFocus();
+    } finally {
+      opener.remove();
+    }
+  });
+
   it('aborts the request in the air on unmount and, on the next mount, resumes as uncertain with the same key', async () => {
     let signal: AbortSignal | undefined;
     apiClient.request.mockImplementationOnce((_path: string, options: { signal: AbortSignal }) => {

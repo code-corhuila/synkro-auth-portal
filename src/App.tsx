@@ -1,5 +1,6 @@
 import { useAdminIdentity } from './auth/hooks/useAdminIdentity';
 import { UsersPage } from './auth/pages/UsersPage';
+import { ServiceTokensPage } from './auth/pages/ServiceTokensPage';
 
 const UNAVAILABLE = <p>Esta función aún no está disponible.</p>;
 
@@ -18,8 +19,16 @@ export default function App() {
   const user = useAdminIdentity();
 
   if (!user || user.role !== 'ADMIN') return UNAVAILABLE;
-  if (!/^\/users\/?$/i.test(window.location.pathname)) return UNAVAILABLE;
 
   const owner = { sub: user.sub, sessionId: user.sessionId };
-  return <UsersPage key={JSON.stringify([owner.sub, owner.sessionId])} owner={owner} />;
+  // Remounting on owner change (instead of relying on each page's own
+  // effects) is what guarantees no state — least of all an issued
+  // secret — ever survives a logout, role change or new login as the
+  // same person into the next render.
+  const key = JSON.stringify([owner.sub, owner.sessionId]);
+  const path = window.location.pathname;
+
+  if (/^\/users\/?$/i.test(path)) return <UsersPage key={key} owner={owner} />;
+  if (/^\/service-tokens\/?$/i.test(path)) return <ServiceTokensPage key={key} owner={owner} />;
+  return UNAVAILABLE;
 }

@@ -1,0 +1,20 @@
+.issue-service-token { color: var(--color-text-primary); font-family: var(--font-family-sans); max-width: 28rem; }
+.issue-service-token h2 { font-family: var(--font-family-heading); }
+.issue-service-token form { display: grid; gap: var(--space-3); margin-block-end: var(--space-6); }
+.issue-service-token .field { display: grid; gap: var(--space-1); }
+.issue-service-token input, .issue-service-token select { font: inherit; padding: var(--space-3); color: var(--color-text-primary); background: var(--color-bg-page); border: 1px solid var(--color-text-secondary); border-radius: var(--radius-md); min-width: 0; }
+.issue-service-token select:disabled, .issue-service-token input:disabled { opacity: .6; cursor: not-allowed; }
+.issue-service-token [role="alert"] { color: var(--color-error-700); margin: 0; }
+.issue-service-token button { min-height: 2.75rem; padding: var(--space-3); border: 0; border-radius: var(--radius-md); background: var(--color-primary-500); color: white; font: inherit; cursor: pointer; }
+.issue-service-token button:disabled { opacity: .5; cursor: not-allowed; }
+.issue-service-token :focus-visible { outline: 2px solid var(--color-primary-500); outline-offset: 3px; }
+.issue-service-token__form-error { background: var(--color-error-50); padding: var(--space-3); border-radius: var(--radius-md); }
+.issue-service-token__confirm { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--color-warning-700); border-radius: var(--radius-md); background: var(--color-warning-50); margin-block-end: var(--space-6); }
+.issue-service-token__confirm p { margin: 0; }
+.issue-service-token__result { display: grid; gap: var(--space-3); }
+.issue-service-token__metadata { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--color-success-700); border-radius: var(--radius-md); background: var(--color-success-50); margin: 0; }
+.issue-service-token__metadata div { display: flex; justify-content: space-between; gap: var(--space-3); }
+.issue-service-token__metadata dt { color: var(--color-text-secondary); margin: 0; }
+.issue-service-token__metadata dd { margin: 0; font-family: var(--font-family-mono); }
+.issue-service-token__secret { grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; }
+.issue-service-token__secret input { font-family: var(--font-family-mono); grid-column: 1 / -1; }

@@ -88,18 +88,20 @@ export function ResetPasswordPanel({ owner, target, onClose, onResolved }: {
 
   useEffect(() => {
     mounted.current = true;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (resumed) markAmbiguous(resumed.key);
     return () => {
       mounted.current = false;
       flight.current?.abort();
+      if (opener?.isConnected) opener.focus();
     };
     // The resumed intent is read once, when the panel opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    (phase === 'form' ? title : step).current?.focus();
-  }, [phase]);
+    if (!pending) (phase === 'form' ? title : step).current?.focus();
+  }, [phase, pending]);
 
   function conclude(next: Phase, text: string | null) {
     onResolved?.();

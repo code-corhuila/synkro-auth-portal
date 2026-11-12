@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { getUserById } from '../api/usersApi';
 import { classifyFailure, formErrorMessage, isApiFailure, type ApiFailure } from '../model/errors';
-import type { Role, UserProfile } from '../model/user';
+import type { ResetTarget, Role, UserProfile } from '../model/user';
 import './UserLookup.css';
 
 const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -21,7 +21,7 @@ type Status = 'idle' | 'loading' | 'data' | 'empty' | 'error';
 // Known-ID lookup only (AUTH16-04) — never a browsable list. A request id
 // counter plus aborting the previous controller both guard against an older
 // search overwriting a newer one, even if the abort itself is not observed.
-export function UserLookup({ selected }: { selected?: { id: string } } = {}) {
+export function UserLookup({ selected, onResetPassword }: { selected?: { id: string }; onResetPassword?: (target: ResetTarget) => void } = {}) {
   const [id, setId] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -153,6 +153,12 @@ export function UserLookup({ selected }: { selected?: { id: string } } = {}) {
             <dd>{profile.active ? 'Sí' : 'No'}</dd>
           </div>
         </dl>
+      )}
+      {status === 'data' && profile && onResetPassword && profile.active && profile.role !== 'ADMIN' && (
+        <button type="button" className="user-lookup__reset"
+          onClick={() => onResetPassword({ userId: profile.userId, name: profile.name, email: profile.email, role: profile.role })}>
+          Restablecer contraseña
+        </button>
       )}
     </section>
   );

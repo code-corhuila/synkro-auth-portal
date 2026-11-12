@@ -24,3 +24,21 @@ jobs:
           test -f .github/pull_request_template.md
           test -f .env.example
           echo "Common files present."
+
+  consumer-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:contract
+      - name: Reject stale consumer artifacts
+        run: test -z "$(git status --porcelain -- tests/pact/pacts)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auth-reset-consumer-pact-${{ github.sha }}
+          path: tests/pact/pacts/*.json

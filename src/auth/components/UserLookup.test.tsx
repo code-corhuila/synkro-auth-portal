@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { apiClient } from '../../test-doubles/apiClient';
 import { UserLookup } from './UserLookup';
@@ -97,5 +97,48 @@ describe('known-ID lookup (AUTH16-04, minimum test 4)', () => {
     fireEvent.change(screen.getByLabelText('ID de usuario'), { target: { value: VALID_ID.slice(0, -1) + '2' } });
 
     expect(screen.queryByText('bob@example.test')).not.toBeInTheDocument();
+  });
+});
+
+describe('password reset entry point', () => {
+  const person = (role: string, active: boolean) => ({
+    userId: VALID_ID, name: 'Bob', email: 'bob@example.test', role, registrationDate: '2026-11-01T00:00:00Z', active,
+  });
+
+  it('offers the reset on the profile of an active non-administrator and hands over only who it is', async () => {
+    apiClient.request.mockResolvedValue(person('INVENTORY', true));
+    const reset = vi.fn();
+    render(<UserLookup onResetPassword={reset} />);
+    search(VALID_ID);
+    await screen.findByText('bob@example.test');
+    apiClient.request.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restablecer contraseña' }));
+
+    expect(reset).toHaveBeenCalledWith({ userId: VALID_ID, name: 'Bob', email: 'bob@example.test', role: 'INVENTORY' });
+    expect(apiClient.request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an administrator', person('ADMIN', true)],
+    ['an inactive user', person('SALESPERSON', false)],
+  ])('does not offer the reset for %s', async (_label, profile) => {
+    apiClient.request.mockResolvedValue(profile);
+    render(<UserLookup onResetPassword={() => {}} />);
+    search(VALID_ID);
+
+    await screen.findByText('bob@example.test');
+
+    expect(screen.queryByRole('button', { name: 'Restablecer contraseña' })).not.toBeInTheDocument();
+  });
+
+  it('offers nothing when the lookup is not given the action', async () => {
+    apiClient.request.mockResolvedValue(person('SALESPERSON', true));
+    render(<UserLookup />);
+    search(VALID_ID);
+
+    await screen.findByText('bob@example.test');
+
+    expect(screen.queryByRole('button', { name: 'Restablecer contraseña' })).not.toBeInTheDocument();
   });
 });

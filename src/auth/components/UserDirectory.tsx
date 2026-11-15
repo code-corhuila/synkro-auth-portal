@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchUsers, type UserPage } from '../api/usersApi';
 import { formErrorMessage, isApiFailure } from '../model/errors';
-import { ROLES, type Role } from '../model/user';
+import { ROLES, type ResetTarget, type Role } from '../model/user';
 import './UserDirectory.css';
 
 const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Administrador', SALESPERSON: 'Vendedor', INVENTORY: 'Inventario' };
 const LIMIT = 20;
 type Result = { state: 'loading' } | { state: 'ready'; page: UserPage } | { state: 'error'; message: string };
 
-export function UserDirectory({ onSelect }: { onSelect: (id: string) => void }) {
+// `onResetPassword` is passed only inside the authenticated Users administration: without it the directory offers no
+// reset at all. The reset is offered only for an active non-ADMIN user; the API stays authoritative (ADR-021).
+export function UserDirectory({ onSelect, onResetPassword }: { onSelect: (id: string) => void; onResetPassword?: (target: ResetTarget) => void }) {
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<Role | ''>('');
@@ -87,11 +89,13 @@ export function UserDirectory({ onSelect }: { onSelect: (id: string) => void }) 
           {visible.page.data.length ? <div className="user-directory__table">
             <table>
               <caption className="user-directory__caption">Usuarios encontrados</caption>
-              <thead><tr><th scope="col">Nombre</th><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Ficha</th></tr></thead>
+              <thead><tr><th scope="col">Nombre</th><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Ficha</th>{onResetPassword && <th scope="col">Contraseña</th>}</tr></thead>
               <tbody>{visible.page.data.map((user) => <tr key={user.userId}>
                 <th scope="row">{user.name}</th><td>{user.email}</td><td>{ROLE_LABEL[user.role]}</td>
                 <td>{user.active ? 'Activo' : 'Inactivo'}</td>
                 <td><button type="button" aria-label={`Ver ficha de ${user.name}`} onClick={() => onSelect(user.userId)}>Ver ficha</button></td>
+                {onResetPassword && <td>{user.active && user.role !== 'ADMIN' && <button type="button" aria-label={`Restablecer contraseña de ${user.name}`}
+                  onClick={() => onResetPassword({ userId: user.userId, name: user.name, email: user.email, role: user.role })}>Restablecer</button>}</td>}
               </tr>)}</tbody>
             </table>
           </div> : <p role="status">No se encontraron usuarios.</p>}

@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
-    "check:production-build": "node scripts/check-production-build.mjs"
+    "check:production-build": "node scripts/check-production-build.mjs",
+    "test:contract": "npm ci --prefix tests/pact && vitest run --config tests/pact/vitest.config.ts"
   },
   "dependencies": {
     "react": "^19.2.8",

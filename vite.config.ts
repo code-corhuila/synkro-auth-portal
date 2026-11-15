@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
                     remotes: { shell: env.VITE_SHELL_ENTRY_URL || 'http://localhost:5173/assets/remoteEntry.js' },
                     shared: { react: { import: false, requiredVersion: '^19.2.8' }, 'react-dom': { import: false, requiredVersion: '^19.2.8' } },
                 })])], build: { target: 'esnext', modulePreload: false, cssCodeSplit: false, minify: false },
-        preview: { port: 5174, strictPort: true }, test: { environment: 'jsdom', globals: true, setupFiles: './src/test-setup.ts',
+        preview: { port: 5174, strictPort: true }, test: { include: ['src/**/*.test.{ts,tsx}'], environment: 'jsdom', globals: true, setupFiles: './src/test-setup.ts',
             alias: {
                 'shell/authentication': fileURLToPath(new URL('./src/test-doubles/authentication.ts', import.meta.url)),
                 'shell/apiClient': fileURLToPath(new URL('./src/test-doubles/apiClient.ts', import.meta.url)),

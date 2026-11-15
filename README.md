@@ -1,78 +1,124 @@
 # synkro-auth-portal
 
-> auth bounded context: web UI (remote)
+> Auth web remote for login and ADMIN user/service-token management, mounted by synkro-front.
 
-Part of the **SynkroTech SAS Sales Management System** â€” organization `code-corhuila`.
-Governance and documentation live in [`synkro-docs`](https://github.com/code-corhuila/synkro-docs).
+Part of the **SynkroTech SAS Sales Management System**. Architecture, decisions and
+contracts live in [synkro-docs](https://github.com/code-corhuila/synkro-docs).
 
-## Branching
+**Quick start:** from this root with Node 22, run `npm ci` and `npm run build`; mount the compiled remote through synkro-front. See [Getting started](#getting-started).
 
-Three permanent branches. **None of them accepts a direct commit** â€” you enter through a child
-branch and leave through a Pull Request.
+## What it does
 
+- Exposes the login form while the Host owns authentication transport and session state.
+- Provides ADMIN user search, registration, lookup and active non-ADMIN password reset.
+- Provides service-token management through the Host's shared client.
+- Keeps password-reset intent in session-bound memory and supports safe manual replay.
+
+## Where it fits
+
+```mermaid
+flowchart LR
+  Host["synkro-front"] -->|"loads remote"| Portal["synkro-auth-portal"]
+  Portal -->|"shared client and session"| Host
+  Host --> Gateway["synkro-api-gateway"]
+  Gateway --> API["synkro-auth-api"]
 ```
-develop  <--PR--  feat/... fix/... chore/...
-qa       <--PR--  qa/...
-main     <--PR--  release/...  hotfix/...
+
+The standalone page is not a second authenticated application. The Host supplies session, transport, global navigation and the browser-facing backend origin.
+
+## Tech stack
+
+| Component | Choice |
+|---|---|
+| Language / UI | TypeScript; React 19 |
+| Build | Vite; @originjs/vite-plugin-federation |
+| Tests | Vitest; compiled boundary checks; isolated Pact tooling |
+| Runtime | NGINX remote, exposed internally on platform |
+
+## Dependencies
+
+| Depends on | Purpose | Configuration |
+|---|---|---|
+| synkro-front | Shared client, identity and remote entry | VITE_SHELL_ENTRY_URL |
+| synkro-auth-api | Published domain operations | Host client through gateway |
+
+## Getting started
+
+Use **PowerShell or Bash** from this repository root with Node 22. Prepare local build inputs from `.env.example`.
+
+```text
+npm ci
+npm run build
+npm run preview
 ```
 
-Promotion happens **by re-application** (`git cherry-pick -x`), never by merging one permanent
-branch into another: `merge develop -> qa` and `merge qa -> main` do not exist in this model.
+Build the remote before loading it in the Host. Preview is for local assets; the authenticated UI is mounted through the Host. For a container deployment, the Host serves the owning `/remotes/auth/` prefix.
 
-`main` requires **1 approval from `ariel5253`**. On `develop` and `qa` the team sets its own review
-rule.
+For the complete platform, start from [synkro-infra-postgres](https://github.com/code-corhuila/synkro-infra-postgres).
 
-Full policy: `00-governance/branching-policy.md` in `synkro-docs`.
+## Configuration
 
-## Users: password reset by an ADMIN (HU-AUTH-19)
+The committed [.env.example](.env.example) is the configuration inventory.
+Its values are examples; required inputs and defaults follow its comments and the
+owning implementation. Keep real secrets in protected local files.
 
-Inside the authenticated Users page an ADMIN can reset the password of an
-**active non-ADMIN** user from the directory row or the profile found by id
-(`ResetPasswordPanel`). There is no public recovery button on the login screen.
+| Variable | Purpose |
+|---|---|
+| `VITE_BASE_PATH` | Connection address, origin or build-time entry point |
+| `VITE_SHELL_ENTRY_URL` | Connection address, origin or build-time entry point |
 
-- Contract: `POST /api/v1/auth/users/{id}/password-reset` through the Host's
-  client, body `{newPassword, confirmPassword}`, `Idempotency-Key` as a client
-  option (never a URL, never a hand-written header). ADR-021 (accepted).
-- Flow: form (two password fields, show/hide) â†’ explicit confirmation that
-  repeats the recipient and states the effects â†’ pending (controls disabled,
-  single flight) â†’ success. The Portal never claims the password was changed
-  until the API answered 200.
-- An outcome that cannot be confirmed (timeout, lost response, network, 5xx or
-  an unreadable answer) shows "No se pudo confirmar el resultado." and offers a
-  manual retry with the **same key and the same request**, or discarding the
-  attempt. Nothing is ever resent automatically and no login attempt is used to
-  "check".
-- A 422 on the key (the 24-hour receipt expired, or the key was used with another
-  request) says the attempt can no longer be resent, that nothing was repeated and that the
-  original reset may have been applied. It never claims it did not happen, never resends or
-  makes a key by itself, and offers "Iniciar un restablecimiento nuevo", which needs the
-  password typed and confirmed again and uses a new key.
-- The intent (key, recipient, password) lives in RAM only, bound to the Host
-  subject and `sessionId`. It is dropped on logout, on a new session, on a
-  definite answer, on success and on discard; a page reload loses it and the
-  Portal says it can no longer confirm or resend that attempt.
-- Issued access tokens may stay valid until they expire (about one hour, ADR-017);
-  the target's renewable sessions end.
+Federation entry and base-path inputs are evaluated at build time. The remote does not configure a separate API origin.
 
-## Login remote (HU-FE-08)
+## Interface
 
-React login form exposed as `authPortal/Login`, mounted by Host at public
-`/login`. Consumes only `shell/authentication`; the Host owns transport,
-credentials, session and navigation. No standalone production login client.
+| Entry / route | Use |
+|---|---|
+| ./Login and ./App | Exposed federation modules |
+| /login | Public login; Host-managed session |
+| /users | ADMIN directory, registration, lookup and password reset |
+| /service-tokens | ADMIN service-token operations |
 
-Node 22: `npm ci`, `npm run lint`, `npm run coverage`, `npm run build`,
-`npm run check:production-build`. Configure `VITE_BASE_PATH` and
-`VITE_SHELL_ENTRY_URL` at build time. Compose serves internally on platform
-without published ports. See [implementation and delivery](docs/implementation.md)
-for contracts, configuration, validation and coordinated release order.
-## AUTH-19 review checks
+## Project structure
 
-`npm run test:contract` generates five Pact interactions from the actual reset client. They cover success, replay
-after a later reset, an expired receipt, a purged receipt and a forbidden caller. Their examples are redacted string
-matchers; credentials are transient and never published in the artifact. Auth API verifies the pinned artifact with
-real API/owning migrations/PostgreSQL plus a deliberately incompatible provider. Regenerate and commit the artifact
-when the client contract changes; CI rejects stale artifacts. The normal unit collector remains restricted to src.
+```text
+src/             exposed Login/App components
+src/             user and token management views
+deploy/          remote image and build-time federation inputs
+scripts/         compiled production checks
+tests/pact/      isolated consumer contracts
+docs/            design and password-reset operating details
+```
 
-The portal CI also runs lint, build, unit coverage, the production boundary check and the versioned Dockerfile build.
-Reset result transitions restore keyboard focus, including a second uncertain retry; closing restores a connected
-opener. This does not change the request or silently generate a new idempotency key.
+## Testing
+
+```text
+npm run lint
+npm test
+npm run coverage
+npm run build
+npm run check:production-build
+npm run test:contract
+```
+
+Password-reset DOM/compiled-boundary regressions and consumer contracts are separate checks. Detailed delivery notes retain their original reported test and browser-evidence limits.
+
+## Branching and contributing
+
+Use a `feat/`, `fix/` or `chore/` child branch and a PR into `develop`.
+Permanent branches are `develop`, `qa` and `main`; none accepts direct commits.
+Promote through a `qa-<description>` or release child with `git cherry-pick -x`.
+`main` requires approval from `ariel5253`. Use English Conventional Commits.
+See [Git conventions](https://github.com/code-corhuila/synkro-docs/blob/main/00-governance/git-conventions.md).
+
+## Further documentation
+
+- [Password reset operations](docs/password-reset-operations.md).
+- [Login integration](docs/login-integration.md).
+- [Testing](docs/testing.md).
+- [Domain rules](https://github.com/code-corhuila/synkro-docs/blob/main/02-domain/entities-and-rules.md), [contracts](https://github.com/code-corhuila/synkro-docs/tree/main/07-api/contracts/openapi) and [testing strategy](https://github.com/code-corhuila/synkro-docs/blob/main/11-quality/testing-strategy.md).
+
+<!-- Preserve previously published README section links. -->
+<a id="branching"></a>
+<a id="users-password-reset-by-an-admin-hu-auth-19"></a>
+<a id="login-remote-hu-fe-08"></a>
+<a id="auth-19-review-checks"></a>

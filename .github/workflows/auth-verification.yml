@@ -19,7 +19,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run coverage
+      - run: npm run coverage -- --maxWorkers=2
       - run: npm run build
       - run: npm run check:production-build
       - run: docker compose -f deploy/compose.yml config --quiet
+      - run: docker build -f deploy/Dockerfile -t auth-portal:ci .

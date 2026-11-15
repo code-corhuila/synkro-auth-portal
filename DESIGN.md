@@ -94,6 +94,21 @@ corners, no fully round corners outside `--radius-full` (unused here).
   person must act on (validation, server rejection, copy failure). This is
   the same pair `UserLookup`/`CreateUserForm` already use — `ServiceTokenLookup`
   and `IssueServiceTokenForm` do not introduce a third pattern.
+- **Password reset by an ADMIN (HU-AUTH-19)**: `ResetPasswordPanel` is an inline
+  card in the authenticated Users page, never a modal or `confirm()`. It names
+  the recipient (name, e-mail, role, id) on every step: form with two
+  password fields and one show/hide toggle (`aria-pressed`), then a
+  confirmation step that repeats the recipient and lists the effects in the
+  warning tint (renewable sessions end, issued access tokens may last about an
+  hour, hand the password over outside the application). While the request
+  is in the air every control is disabled and a synchronous guard rejects a
+  second submit. An outcome that cannot be confirmed says exactly
+  "No se pudo confirmar el resultado." — it never claims failure — and offers
+  "Reintentar con la misma solicitud" or "Descartar intento". A 422 about the
+  key ends the attempt without claiming the reset did not happen and offers
+  "Iniciar un restablecimiento nuevo" (empty form, new confirmation, new key). The entry
+  button exists only in the directory row and the profile of an active
+  non-ADMIN user, and never on the public login screen.
 - **Known-ID lookup**: a single ID input + "Buscar", never a browsable list —
   same shape as `UserLookup`, reused for token metadata.
 
@@ -104,6 +119,12 @@ corners, no fully round corners outside `--radius-full` (unused here).
 - Do keep the secret in the page component's own ephemeral state; don't put
   it in the retained emission intent, a module-level variable, or any Web
   Storage/URL.
+- Do keep the reset password only in the panel's state and in the RAM-only
+  reset intent (module scope, bound to the Host subject and `sessionId`,
+  retired on identity change, on success, on a definite answer and on discard):
+  a retry with the same `Idempotency-Key` must resend the same
+  request (ADR-021). Never in Web Storage, the URL, a log or the console, and
+  never in any text shown after the request leaves the form.
 - Do show a specific, sanitized message for a denied clipboard write; don't
   swallow the error or silently issue a replacement token.
 - Do use `<select>` for this fixed 2-item enumeration; don't build a custom

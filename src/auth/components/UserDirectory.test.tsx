@@ -31,3 +31,46 @@ it('puede reintentar si el listado falla sin mostrar datos anteriores', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
   expect(await screen.findByText(profile.email)).toBeVisible();
 });
+
+const person = (role: string, active: boolean, id: string, name: string) => ({
+  userId: id, name, email: `${id}@example.test`, role, registrationDate: '2026-11-03T00:00:00Z', active,
+});
+const mixed = { data: [
+  person('SALESPERSON', true, 'sales-1', 'Vera Ventas'),
+  person('INVENTORY', true, 'inv-1', 'Ivan Inventario'),
+  person('ADMIN', true, 'admin-1', 'Ada Admin'),
+  person('SALESPERSON', false, 'gone-1', 'Gabi Inactiva'),
+], meta: { page: 1, limit: 20, total: 4, totalPages: 1 } };
+
+it('ofrece restablecer la contraseña solo de usuarios activos que no son administradores, y solo si se pasa la acción', async () => {
+  apiClient.request.mockResolvedValue(mixed);
+  render(<UserDirectory onSelect={() => {}} onResetPassword={() => {}} />);
+  await screen.findByText('sales-1@example.test');
+
+  expect(screen.getByRole('button', { name: 'Restablecer contraseña de Vera Ventas' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Restablecer contraseña de Ivan Inventario' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Restablecer contraseña de Ada Admin' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Restablecer contraseña de Gabi Inactiva' })).not.toBeInTheDocument();
+});
+
+it('no muestra ninguna acción de restablecimiento si el directorio no recibe la acción', async () => {
+  apiClient.request.mockResolvedValue(mixed);
+  render(<UserDirectory onSelect={() => {}} />);
+  await screen.findByText('sales-1@example.test');
+
+  expect(screen.queryByRole('button', { name: /restablecer contraseña/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Contraseña' })).not.toBeInTheDocument();
+});
+
+it('entrega solo los datos que identifican al destinatario, sin pedir nada al servidor', async () => {
+  apiClient.request.mockResolvedValue(mixed);
+  const reset = vi.fn();
+  render(<UserDirectory onSelect={() => {}} onResetPassword={reset} />);
+  await screen.findByText('sales-1@example.test');
+  apiClient.request.mockClear();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Restablecer contraseña de Vera Ventas' }));
+
+  expect(reset).toHaveBeenCalledWith({ userId: 'sales-1', name: 'Vera Ventas', email: 'sales-1@example.test', role: 'SALESPERSON' });
+  expect(apiClient.request).not.toHaveBeenCalled();
+});
